@@ -1,0 +1,170 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>MOC - Micro OpenCV Library</title>
+
+    <link href="css/entireframework.min.css" rel="stylesheet" type="text/css">
+    <link href="css/min_style.css" rel="stylesheet" type="text/css">
+
+    <!-- Javascript loads at the end of this file...-->
+</head>
+<body>
+
+    <nav class="nav" tabindex="-1" onclick="this.focus()">
+        <div class="container">
+            <a class="pagename current" href="#">Micro OpenCV</a>
+            <a href="#" id="example1">[Warp]</a>
+            <a href="#" id="example2">[Canny edges]</a> 
+            <a href="#" id="example3">[Blur]</a> 
+            <a href="#" id="example4">[Colour Range]</a> 
+            <a href="#" id="example5">[Contours]</a> 
+            <a href="#" id="example6">[Grabcut]</a> 
+            <a href="#" id="example7">[Face detection]</a> 
+        </div>
+    </nav>
+
+    <button class="btn-close btn btn-sm">×</button>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Examples</h1>
+            <p>Select from the examples above to see how OpenCV can do some interesting things...</p>
+            <p>(and don't forget to allow access to your camera)</p>
+            <p id="status">OpenCV.js is loading...</p>
+        </div>
+        <div class="row">
+            <div class="col c4"><h3>Video Input</h3>
+                <video id="videoInput" width="320" height="200" autoplay playsinline controls="false"></video>
+                <br><a href="#" class="btn btn-sm btn-a" id="button1">Hide</a>
+            </div>
+            <div class="col c4"><h3>Processing Canvas</h3>
+                <canvas id="canvasProcessing" width="320"></canvas>
+                <br><a href="#" class="btn btn-sm btn-b" id="button2">Hide</a>
+            </div>
+            <div class="col c4"><h3>OpenCV Result</h3>
+                <canvas id="canvasOutputId" width="320"></canvas>
+                <br><a href="#" class="btn btn-sm btn-c" id="button3">Hide</a>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Start reading here -->
+    <script type="text/javascript">
+        // The library itself
+        let moc;
+        // Some examples using it
+        let exampleList = [];
+        let exampleCurrent;
+
+        async function initVideoCapture() {
+            // Because this page is a teaching aid, we create our own processing canvas
+            // and ask MOC to use it.  Normally, we probably wouldn't bother and let
+            // MOC create it's own (hidden one) internally.
+            moc = new MicroOpenCV(cv, 'videoInput', 'canvasProcessing');
+        
+            await moc.streamVideoStart();
+
+            // Invoke the first video frame
+            processVideo();
+        }
+
+
+        async function processVideo() {
+            const FPS = 20;
+            try {
+                let frameData = moc.processingFrameStart();
+
+                // Process this frame, with the currently selected example
+                if (exampleCurrent && exampleList[exampleCurrent]) {
+                    exampleList[exampleCurrent].process('canvasOutputId', frameData);
+                }
+
+                // Clean up any frame assets
+                // (We do this manually in JS, unlike C++ whose destructors would save us the trouble)
+                moc.processingFrameEnd(frameData);
+
+                // Invoke another video frame
+                setTimeout(processVideo, moc.getTimeoutDelay(frameData, FPS));
+            } catch (err) {
+                console.log("ERR : ProcessVideo : ", err.message);
+                console.error("Update has stopped.");
+            }
+        }
+
+
+        var Module = {
+            // https://emscripten.org/docs/api_reference/module.html#Module.onRuntimeInitialized
+            onRuntimeInitialized() {
+                document.getElementById('status').innerHTML = 'OpenCV.js is ready!';
+            }
+        };
+
+
+        function uiToggleShowHide(domButtonID, domVisualID) {
+            const element = document.getElementById(domVisualID);
+            if (element.style.display === "none") {
+                element.style.display = "block";
+                document.getElementById(domButtonID).innerHTML = "Hide";
+            } else {
+                element.style.display = "none";
+                document.getElementById(domButtonID).innerHTML = "Show";
+            }
+        }
+
+        function onAsyncLoad() {
+            if (typeof cv !== typeof undefined && typeof MicroOpenCV !== typeof undefined) {
+                console.log("Starting..")
+                initVideoCapture();
+
+                // Do UI things
+                document.getElementById('button1').addEventListener("click", () => {
+                    uiToggleShowHide('button1', 'videoInput');
+                });
+                document.getElementById('button2').addEventListener("click", () => {
+                    uiToggleShowHide('button2', 'canvasProcessing');
+                });
+                document.getElementById('button3').addEventListener("click", () => {
+                    uiToggleShowHide('button3', 'canvasOutputId');
+                });
+            }
+        }
+
+
+        function onAsyncLoadExample(exampleIndex) {
+            if (!exampleList[exampleIndex]) {
+                console.log(`Example ${exampleIndex} is missing from the array. Probably a forgotten "exampleList[${exampleIndex}] = new function () {..."`);
+            }
+
+            // attach the buttons to trigger the (newly loaded) example
+            document.getElementById(`example${exampleIndex}`).addEventListener("click", () => {
+                console.log("Starting example ", exampleIndex);
+                
+                if (exampleCurrent) {
+                    exampleList[exampleCurrent].release();
+                }
+
+                exampleCurrent = exampleIndex;
+
+                exampleList[exampleCurrent].begin(moc);
+            });
+        }
+
+
+    </script>
+
+<!-- Our examples -->
+<script async src="examples/ex1.js" type="text/javascript" onload="onAsyncLoadExample(1)"></script>
+<script async src="examples/ex2.js" type="text/javascript" onload="onAsyncLoadExample(2)"></script>
+<script async src="examples/ex3.js" type="text/javascript" onload="onAsyncLoadExample(3)"></script>
+<script async src="examples/ex4.js" type="text/javascript" onload="onAsyncLoadExample(4)"></script>
+<script async src="examples/ex5.js" type="text/javascript" onload="onAsyncLoadExample(5)"></script>
+<script async src="examples/ex6.js" type="text/javascript" onload="onAsyncLoadExample(6)"></script>
+<script async src="examples/ex7.js" type="text/javascript" onload="onAsyncLoadExample(7)"></script>
+
+<!--Standard boilerplate -->
+<script async src="js/moc.js" type="text/javascript" onload="onAsyncLoad()"></script>
+<script async src="js/opencv.js" type="text/javascript" onload="onAsyncLoad()"></script>
+
+</body>
+</html>
